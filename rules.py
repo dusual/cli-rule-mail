@@ -102,7 +102,7 @@ class Move(ActionType):
 
 
 class MarkRead(ActionType):
-    action_name = "mark_read"
+    action_name = "mark_as_read"
 
     def __init__(self):
         self.new_folder = None
@@ -112,7 +112,7 @@ class MarkRead(ActionType):
 
 
 class MarkUnread(ActionType):
-    action_name = "mark_unread"
+    action_name = "mark_as_unread"
 
     def __init__(self):
         self.new_folder = None
@@ -141,8 +141,8 @@ class Rule(object):
             raise NotImplementedError
         return field_cls[0]
 
-    def add_field(self, field_name, value):
-        field = self.find_field(field_name)
+    def add_field(self, field_name, value=None):
+        self.field = self.find_field(field_name)
 
     def add_predicate(self, predicate):
         self.verify_predicate(predicate)
@@ -211,25 +211,3 @@ class Rules(object):
 
     def render(self):
         pass
-
-
-def create_rule():
-    from_email = "manning"
-    to_email = "amit"
-    subject = "Manning"
-    predicate = "contains"
-    rule = Rule("first_rule")
-    rule.add_field("from_email", from_email)
-    rule.add_predicate("contains")
-    rule.add_value("amit.pureenergy@gmail.com")
-    rule.add_action("mark_read")
-    rule.write_to_file()
-    print(rule.render())
-    import time
-    time.sleep(20)
-    rule.remove()
-
-
-
-
-#create_rule()

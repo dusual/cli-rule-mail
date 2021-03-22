@@ -81,6 +81,7 @@ class AddRule(Command):
             folder = input("name of folder to move to")
 
         rule = Rule(name_rule)
+        rule.add_field(field)
 #        rule.add_field(field, field_value)
         rule.add_predicate(predicate)
         rule.add_value(comparison_value)
