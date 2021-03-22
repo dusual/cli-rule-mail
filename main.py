@@ -1,4 +1,5 @@
 from abc import ABC
+import os
 
 from rules import Rule
 from rules import (
@@ -100,11 +101,36 @@ class ListRules(Command):
         pass
 
     def execute(self):
+        all_files = os.listdir()
+        rule_files = [file_name for file_name in all_files if ('.json' in file_name and \
+                        file_name != 'credentials.json' and file_name != 'tokens.json')]
+
+        for num, rule_file in enumerate(rule_files, 1):
+            rule_name = rule_file[:-5]
+            print("{}. {}".format(num, rule_name))
+
+
+class DescribeRule(Command):
+    sequence = 3
+
+    def describe(self):
+        print("Describes the rule ")
+
+    def steps(self):
         pass
+
+    def execute(self):
+        rule = input("Describe the rule: ")
+        rule_file = rule + '.json'
+        if not os.path.isfile(rule_file):
+            print("Could not find the rule")
+            exit()
+        
+
 
 
 class ExecuteRules(Command):
-    sequence = 3
+    sequence = 4
 
     def describe(self):
         print("Apply rule and fetch (Choose applying Any/All rules)")

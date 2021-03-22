@@ -196,18 +196,4 @@ class Rule(object):
             }, fp)
 
 
-class Rules(object):
-    def add(self):
-        pass
 
-    def fetch(self):
-        pass
-
-    def delete(self):
-        pass
-
-    def update(self):
-        pass
-
-    def render(self):
-        pass
