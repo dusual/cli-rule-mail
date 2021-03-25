@@ -2,6 +2,8 @@ from abc import ABC
 import json
 import os
 
+from db import db
+
 STRING_FIELDTYPES = ['subject', 'from_email', 'to_email']
 STRING_PREDICATES = ['contains', 'does not contain', 'equals', 'does not equal']
 DATE_FIELDTYPES = ['date']
@@ -49,27 +51,14 @@ class FromEmail(Field):
 class ToEmail(Field):
     field_name = "to"
 
-#    def __init__(self, value):
-#        if not self.verify(value):
-#            raise ValueError("Wrong Value type for field ToEmail")
-#        self.value = value
-
-#    def verify(self, value):
-#        if not isinstance(value, str):
-#            return False
-#        return True
-
+    def apply_rule(self, predicate, compare_values):
+        pass
 
 class Date(Field):
     field_name = "date"
 
-#    def __init__(self, value):
-#        if not self.verify(value):
-#            raise ValueError("Wrong Value type for field Date")
-#        self.value = value
-
-#    def verify(self, value):
-#        return True
+    def apply_rule(self, predicate, compare_values):
+        pass
 
 
 class Subject(Field):
@@ -173,13 +162,25 @@ class Rule(object):
         Field Name: %s \n
         Predicate: %s  \n
         Value: %s   \n      
-        """ %(self.field.value, self.predicate, self.compare_value)
+        """ %(self.field.field_name, self.predicate, self.compare_value)
 
 
     @property
     def rule_file(self):
         filename = self.rule_name + '.json'
         return filename
+
+    def from_json(self, rule_file):
+        with open(rule_file, 'r') as fp:
+            rule_json = json.load(fp)
+
+        self.field = self.find_field(rule_json['field_name'])
+        self.predicate = rule_json['predicate']
+        self.compare_value = rule_json['compare_value']
+        self.action = self.find_action(rule_json['action'])
+        self.new_folder = rule_json['new_folder']
+        return self
+
 
     def remove(self):
         os.remove(self.rule_file)
@@ -195,5 +196,7 @@ class Rule(object):
                 "new_folder": None or self.action.new_folder
             }, fp)
 
-
-
+    def apply_rule(self):
+        pass
+        #if self.predicate == 'contains':
+        #    self.compare_value in

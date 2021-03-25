@@ -120,13 +120,18 @@ class DescribeRule(Command):
         pass
 
     def execute(self):
+        list_rule = ListRules()
+        print("The list of rules to choose from, Please choose the name:")
+        list_rule.execute()
         rule = input("Describe the rule: ")
         rule_file = rule + '.json'
-        if not os.path.isfile(rule_file):
-            print("Could not find the rule")
-            exit()
-        
 
+        if not os.path.isfile(rule_file):
+            print("Could not find the rule by the name {}".format(rule))
+            exit()
+
+        rule = Rule(rule).from_json(rule_file)
+        print(rule.render())
 
 
 class ExecuteRules(Command):
@@ -138,8 +143,31 @@ class ExecuteRules(Command):
     def steps(self):
         pass
 
+    def fetch_rule(self, rule_name):
+        return True
+
     def execute(self):
-        pass
+        ListRules().execute()
+        operator = input("Choose operator to apply to rules(number).\n1. Any \n2. All\nChoose: ")
+        try:
+            operator = int(operator)
+        except ValueError:
+            print("Choose numbers\n 1. Any \n2. All\n ")
+
+        rules_to_apply = []
+        while True:
+            ListRules().execute()
+            rule = input("Rule Name to apply or done in case you wish to execute now: ")
+            rule = rule.strip()
+            if rule == "done":
+                print("Thank You. Applying rules wait for a few....")
+                break
+
+            if self.fetch_rule(rule):
+                if rule not in rules_to_apply:
+                    rules_to_apply.append(rule)
+            else:
+                print("Could not find rule")
 
 
 class ListCommands(Command):
