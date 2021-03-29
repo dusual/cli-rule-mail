@@ -1,7 +1,10 @@
 from abc import ABC
 import os
 
-from rules import Rule
+from rules import (
+    Rule,
+    ActionType
+)
 from rules import (
     STRING_PREDICATES,
     DATE_PREDICATES
@@ -31,13 +34,15 @@ class AddRule(Command):
 
     def execute(self):
         field = input("Add the input field out of (from/to/subject/date): ")
-        if field not in ["from", "to", "subject", "date"]:
+        if (field == "from" or field == "to"):
+            field = field + "_email"
+        if field not in ["from_email", "to_email", "subject", "date"]:
             print("Could not recognize the option. Exiting")
             exit()
 
 #        field_value = input("Value of the field: ")
         used_predicate = None
-        if field in ['from', 'to', 'subject']:
+        if field in ['from_email', 'to_email', 'subject']:
             options_string = ""
             used_predicate = STRING_PREDICATES
             for num, option in enumerate(STRING_PREDICATES, 1):
@@ -133,6 +138,19 @@ class DescribeRule(Command):
         rule = Rule(rule).from_json(rule_file)
         print(rule.render())
 
+class ListAction(Command):
+    sequence = 5
+
+    def describe(self):
+        print("List all the actions")
+
+    def steps(self):
+        pass
+
+    def execute(self):
+        print("\n")
+        for cls in ActionType.__subclasses__():
+            print("{}".format(cls.action_name))
 
 class ExecuteRules(Command):
     sequence = 4
@@ -144,6 +162,10 @@ class ExecuteRules(Command):
         pass
 
     def fetch_rule(self, rule_name):
+        rule_file = rule_name + '.json'
+        if not os.path.isfile(rule_file):
+            print("Could not find the rule by the name {}".format(rule_name))
+            return False
         return True
 
     def execute(self):
@@ -160,7 +182,6 @@ class ExecuteRules(Command):
             rule = input("Rule Name to apply or done in case you wish to execute now: ")
             rule = rule.strip()
             if rule == "done":
-                print("Thank You. Applying rules wait for a few....")
                 break
 
             if self.fetch_rule(rule):
@@ -168,6 +189,35 @@ class ExecuteRules(Command):
                     rules_to_apply.append(rule)
             else:
                 print("Could not find rule")
+
+        ListAction().execute()
+        action_name = input("Action to apply. Choose by name: ")
+        action_types = [action.action_name for action in ActionType.__subclasses__()]
+        if action_name not in action_types:
+            print("Could not find the action")
+
+        if action_name == 'move':
+            move_folder = input("Where should I move the emails: ")
+        else:
+            move_folder = None
+
+        result_ids = set()
+        for rule in rules_to_apply:
+            rule = Rule(rule)
+            rule.from_json(rule.rule_file)
+            result = rule.fetch_for_rule()
+            new_result_ids = set([message.gmail_id for message in result])
+            if operator == 1:
+                result_ids.union(new_result_ids)
+            else:
+                if len(result_ids) == 0:
+                    result_ids = new_result_ids
+                else:
+                    result_ids.intersection(new_result_ids)
+
+        actions = [action for action in ActionType.__subclasses__() if action.action_name == action_name ]
+        action = actions[0]
+        action().apply(result_ids, move_folder=move_folder)
 
 
 class ListCommands(Command):

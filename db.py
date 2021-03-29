@@ -30,6 +30,5 @@ class Message(db.Entity):
 
 
 
-
 db.bind(provider='sqlite', filename='./mails.sqlite', create_db=True)
 db.generate_mapping(create_tables=True)

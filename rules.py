@@ -2,7 +2,19 @@ from abc import ABC
 import json
 import os
 
-from db import db
+from pony.orm import select
+from pony.orm import db_session
+
+from cron import (
+    authenticate,
+    mark_as_read,
+    mark_as_unread,
+    move_message
+)
+from db import (
+    db,
+    Message
+)
 
 STRING_FIELDTYPES = ['subject', 'from_email', 'to_email']
 STRING_PREDICATES = ['contains', 'does not contain', 'equals', 'does not equal']
@@ -11,18 +23,6 @@ DATE_PREDICATES = ["less than", "greater than"]
 
 
 class Field(ABC):
-
-    def __contains__(self, item):
-        pass
-
-    def __eq__(self, other):
-        pass
-
-    def __lt__(self, other):
-        pass
-
-    def __gt__(self, other):
-        pass
 
     def field_name(self):
         pass
@@ -33,9 +33,65 @@ class Field(ABC):
     def field(self):
         pass
 
+class Predicate(ABC):
+
+    def query(self):
+        pass
+
+class Contains(ABC):
+    name = "contains"
+
+    def query(self, column, value):
+        with db_session:
+
+            query = select(m for m in Message if value in getattr(m, column))
+            results = query.fetch()
+            return results
+
+
+class DoesNotContain(ABC):
+
+    def query(self, column, value):
+        with db_session:
+            query = select(m for m in Message if value not in getattr(m, column))
+            results = query.fetch()
+            return results
+
+
+class Equal(ABC):
+
+    def query(self, column, value):
+        with db_session:
+            query = select(m for m in Message if value == getattr(m, column))
+            results = query.fetch()
+            return results
+
+
+class NotEqual(ABC):
+
+    def query(self, column, value):
+        with db_session:
+            query = select(m for m in Message if value != getattr(m, column))
+            results = query.fetch()
+            return results
+
+class LessThan(ABC):
+    def query(self, column, value):
+        with db_session:
+            query = select(m for m in Message if value > getattr(m, column))
+            results = query.fetch()
+            return results
+
+class GreaterThan(ABC):
+    def query(self, column, value):
+        with db_session:
+            query = select(m for m in Message if value < getattr(m, column))
+            results = query.fetch()
+            return results
+
 
 class FromEmail(Field):
-    field_name = "from"
+    field_name = "from_email"
 
 #    def __init__(self, value):
 #        if not self.verify(value):
@@ -49,7 +105,7 @@ class FromEmail(Field):
 
 
 class ToEmail(Field):
-    field_name = "to"
+    field_name = "to_email"
 
     def apply_rule(self, predicate, compare_values):
         pass
@@ -83,31 +139,39 @@ class ActionType(ABC):
 class Move(ActionType):
     action_name = "move"
 
-    def __init__(self, new_folder):
-        self.new_folder = new_folder
-
-    def apply(self):
+    def __init__(self):
         pass
+
+    def apply(self, message_ids, move_folder=None):
+        service = authenticate()
+        for message_id in message_ids:
+            move_message(service, message_id, move_folder)
 
 
 class MarkRead(ActionType):
     action_name = "mark_as_read"
 
     def __init__(self):
-        self.new_folder = None
-
-    def apply(self):
         pass
+
+    def apply(self, message_ids, move_folder=None):
+        service = authenticate()
+        for message_id in message_ids:
+            mark_as_read(service, message_id)
+
 
 
 class MarkUnread(ActionType):
     action_name = "mark_as_unread"
 
     def __init__(self):
-        self.new_folder = None
-
-    def apply(self):
         pass
+
+    def apply(self, message_ids, move_folder=None):
+        service = authenticate()
+        for message_id in message_ids:
+            mark_as_unread(service, message_id)
+
 
 
 class Rule(object):
@@ -177,8 +241,8 @@ class Rule(object):
         self.field = self.find_field(rule_json['field_name'])
         self.predicate = rule_json['predicate']
         self.compare_value = rule_json['compare_value']
-        self.action = self.find_action(rule_json['action'])
-        self.new_folder = rule_json['new_folder']
+#        self.action = self.find_action(rule_json['action'])
+#        self.new_folder = rule_json['new_folder']
         return self
 
 
@@ -192,11 +256,28 @@ class Rule(object):
 #                "field_value": self.field.value,
                 "predicate": self.predicate,
                 "compare_value": self.compare_value,
-                "action": self.action.action_name,
-                "new_folder": None or self.action.new_folder
+ #               "action": self.action.action_name,
+ #               "new_folder": None or self.action.new_folder
             }, fp)
 
-    def apply_rule(self):
-        pass
-        #if self.predicate == 'contains':
-        #    self.compare_value in
+    def fetch_for_rule(self):
+        if self.predicate == "contains":
+            results = Contains().query(self.field.field_name, self.compare_value)
+
+        if self.predicate == "does not contain":
+            results = DoesNotContain().query(self.field.field_name, self.compare_value)
+
+        if self.predicate == "equals":
+            results = Equal().query(self.field.field_name, self.compare_value)
+
+        if self.predicate == "does not equal":
+            results = NotEqual().query(self.field.field_name, self.compare_value)
+
+        if self.predicate == "less than":
+            results = LessThan().query(self.field.field_name, self.compare_value)
+
+        if self.predicate == "greater than":
+            results = GreaterThan().query(self.field.field_name, self.compare_value)
+
+        return results
+
